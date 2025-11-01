@@ -1,0 +1,13 @@
+{
+	"servers": {
+		"userlink_mcp_server": {
+			"url": "http://0.0.0.0:8000/mcp",
+			"type": "http",
+			"headers": {
+				"x-microsoft-graph-token": "<your-microsoft-graph-token>",
+				"x-atlassian-token": "<your-atlassian-token>",
+				"x-atlassian-cloud-id": "<your-atlassian-cloud-id>"
+			}
+		}
+	}
+}

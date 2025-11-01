@@ -1,0 +1,561 @@
+"""Main MCP Server for UserLink - Tool registration and server setup."""
+
+from fastmcp import FastMCP
+from typing import Any
+from src.config import config
+from src.utils.auth import (
+    extract_microsoft_token,
+    extract_atlassian_token,
+    extract_atlassian_cloud_id,
+    validate_token,
+    validate_cloud_id,
+    ProviderTokenHeader,
+)
+from src.providers.atlassian.base import AtlassianClient
+from src.providers.atlassian.jira import JiraService
+from src.providers.atlassian.confluence import ConfluenceService
+from src.providers.microsoft.base import MicrosoftGraphClient
+from src.providers.microsoft.teams import TeamsService
+from src.providers.microsoft.outlook import OutlookService
+
+# Initialize FastMCP server
+mcp = FastMCP("UserLink MCP Server")
+
+
+# Helper functions to get access tokens from context
+def _get_microsoft_token(context: dict[str, Any]) -> str:
+    """
+    Extract and validate Microsoft Graph access token from request context.
+
+    Args:
+        context: Request context containing headers
+
+    Returns:
+        Validated Microsoft Graph access token
+
+    Raises:
+        ValueError: If token is missing or invalid
+    """
+    headers = context.get("headers", {})
+    token = extract_microsoft_token(headers)
+
+    if not token or not validate_token(token):
+        raise ValueError(
+            "Invalid or missing Microsoft Graph token in request headers (x-microsoft-graph-token)"
+        )
+
+    return token
+
+
+def _get_atlassian_token(context: dict[str, Any]) -> str:
+    """
+    Extract and validate Atlassian access token from request context.
+
+    Args:
+        context: Request context containing headers
+
+    Returns:
+        Validated Atlassian access token
+
+    Raises:
+        ValueError: If token is missing or invalid
+    """
+    headers = context.get("headers", {})
+    token = extract_atlassian_token(headers)
+
+    if not token or not validate_token(token):
+        raise ValueError(
+            "Invalid or missing Atlassian token in request headers (x-atlassian-token)"
+        )
+
+    return token
+
+
+def _get_atlassian_cloud_id(context: dict[str, Any]) -> str:
+    """
+    Extract and validate Atlassian Cloud ID from request context.
+
+    Args:
+        context: Request context containing headers
+
+    Returns:
+        Validated Atlassian Cloud ID
+
+    Raises:
+        ValueError: If cloud ID is missing or invalid
+    """
+    headers = context.get("headers", {})
+    cloud_id = extract_atlassian_cloud_id(headers)
+
+    if not cloud_id or not validate_cloud_id(cloud_id):
+        raise ValueError(
+            "Invalid or missing Atlassian Cloud ID in request headers (x-atlassian-cloud-id)"
+        )
+
+    return cloud_id
+
+
+# ==================== Atlassian Jira Tools ====================
+
+@mcp.tool()
+async def jira_search_issues(
+    project: str = None,
+    status: str = None,
+    assignee: str = None,
+    issue_type: str = None,
+    max_results: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Search Jira issues with filters.
+
+    Args:
+        project: Project key to filter by (optional)
+        status: Status to filter by (optional)
+        assignee: Assignee email or name (optional)
+        issue_type: Issue type to filter by (optional)
+        max_results: Maximum number of results (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        Search results containing matching issues
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.search_issues(project, status, assignee, issue_type, max_results)
+
+
+@mcp.tool()
+async def jira_search_issues_by_jql(
+    jql: str,
+    max_results: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Search Jira issues using custom JQL query.
+
+    Args:
+        jql: Custom JQL query string
+        max_results: Maximum number of results (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        Search results containing matching issues
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.search_issues_by_jql(jql, max_results)
+
+
+@mcp.tool()
+async def jira_count_issues_by_jql(
+    jql: str,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Count Jira issues matching JQL query.
+
+    Args:
+        jql: JQL query string
+        context: Request context (auto-injected)
+
+    Returns:
+        Count of matching issues
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.count_issues_by_jql(jql)
+
+
+@mcp.tool()
+async def jira_get_issue(issue_key: str, context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get details of a specific Jira issue.
+
+    Args:
+        issue_key: Jira issue key (e.g., PROJ-123)
+        context: Request context (auto-injected)
+
+    Returns:
+        Issue details
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_issue(issue_key)
+
+
+@mcp.tool()
+async def jira_get_all_projects(context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get all Jira projects.
+
+    Args:
+        context: Request context (auto-injected)
+
+    Returns:
+        List of all projects
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_all_projects()
+
+
+@mcp.tool()
+async def jira_get_project_issues(
+    project_key: str,
+    max_results: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get issues for a specific project.
+
+    Args:
+        project_key: Project key
+        max_results: Maximum number of results (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        Issues in the project
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_project_issues(project_key, max_results)
+
+
+@mcp.tool()
+async def jira_get_sprint_issues(
+    sprint_id: str,
+    max_results: int = 100,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get issues in a specific sprint.
+
+    Args:
+        sprint_id: Sprint ID
+        max_results: Maximum number of results (default: 100)
+        context: Request context (auto-injected)
+
+    Returns:
+        Issues in the sprint
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_sprint_issues(sprint_id, max_results)
+
+
+# ==================== Atlassian Confluence Tools ====================
+
+@mcp.tool()
+async def confluence_search_content(
+    cql: str,
+    limit: int = 25,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Search Confluence content using CQL (Confluence Query Language).
+
+    Args:
+        cql: CQL query string (e.g., 'type=page AND text~"search term"')
+        limit: Maximum number of results (default: 25)
+        context: Request context (auto-injected)
+
+    Returns:
+        Search results containing matching content
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.search_content(cql, limit)
+
+
+@mcp.tool()
+async def confluence_get_page(
+    page_id: str,
+    expand: str = "body.storage,version,space",
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get details of a specific Confluence page.
+
+    Args:
+        page_id: Confluence page ID
+        expand: Fields to expand (default: body.storage,version,space)
+        context: Request context (auto-injected)
+
+    Returns:
+        Page details with expanded fields
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_page(page_id, expand)
+
+
+@mcp.tool()
+async def confluence_get_page_children(
+    page_id: str,
+    limit: int = 25,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get child pages of a specific Confluence page.
+
+    Args:
+        page_id: Parent page ID
+        limit: Maximum number of child pages (default: 25)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of child pages
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_page_children(page_id, limit)
+
+
+@mcp.tool()
+async def confluence_get_page_comments(
+    page_id: str,
+    limit: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get comments on a specific Confluence page.
+
+    Args:
+        page_id: Page ID
+        limit: Maximum number of comments (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of comments on the page
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_page_comments(page_id, limit)
+
+
+@mcp.tool()
+async def confluence_get_spaces(limit: int = 25, context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get Confluence spaces.
+
+    Args:
+        limit: Maximum number of spaces to return (default: 25)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of Confluence spaces
+    """
+    token = _get_atlassian_token(context or {})
+    cloud_id = _get_atlassian_cloud_id(context or {})
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_spaces(limit)
+
+
+# ==================== Microsoft Teams Tools ====================
+
+@mcp.tool()
+async def teams_get_joined_teams(context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get user's joined Teams.
+
+    Args:
+        context: Request context (auto-injected)
+
+    Returns:
+        List of teams the user has joined
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.get_joined_teams()
+
+
+@mcp.tool()
+async def teams_get_team_channels(team_id: str, context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get channels in a specific team.
+
+    Args:
+        team_id: Microsoft Teams team ID
+        context: Request context (auto-injected)
+
+    Returns:
+        List of channels in the team
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.get_team_channels(team_id)
+
+
+@mcp.tool()
+async def teams_get_channel_messages(
+    team_id: str,
+    channel_id: str,
+    top: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get messages from a specific Teams channel.
+
+    Args:
+        team_id: Microsoft Teams team ID
+        channel_id: Channel ID
+        top: Maximum number of messages to return (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of messages from the channel
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.get_channel_messages(team_id, channel_id, top)
+
+
+@mcp.tool()
+async def teams_search_messages(
+    keyword: str = None,
+    from_user: str = None,
+    days_back: int = 7,
+    max_results: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Search Teams messages with various filters.
+
+    Args:
+        keyword: Search keyword in message content (optional)
+        from_user: Filter messages from specific user email or display name (optional)
+        days_back: Number of days to search back (default: 7)
+        max_results: Maximum number of results (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        Search results containing matching messages
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.search_teams_messages(keyword, from_user, days_back, max_results)
+
+
+# ==================== Microsoft Outlook Tools ====================
+
+@mcp.tool()
+async def outlook_get_emails(
+    top: int = 10,
+    folder: str = None,
+    from_address: str = None,
+    subject_contains: str = None,
+    days_back: int = None,
+    is_read: bool = None,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get user's email messages with advanced filtering.
+
+    Args:
+        top: Number of messages to return (default: 10)
+        folder: Folder name to search in (e.g., 'inbox', 'sent') (optional)
+        from_address: Filter emails from specific sender (optional)
+        subject_contains: Filter emails with subject containing text (optional)
+        days_back: Number of days to search back (optional)
+        is_read: Filter by read status (optional)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of email messages matching the filters
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = OutlookService(client)
+    return await service.get_emails(top, folder, from_address, subject_contains, days_back, is_read)
+
+
+@mcp.tool()
+async def outlook_get_message(message_id: str, context: dict[str, Any] = None) -> dict[str, Any]:
+    """
+    Get details of a specific email message.
+
+    Args:
+        message_id: Outlook message ID
+        context: Request context (auto-injected)
+
+    Returns:
+        Message details
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = OutlookService(client)
+    return await service.get_message(message_id)
+
+
+@mcp.tool()
+async def outlook_get_calendar_events(
+    days_ahead: int = 7,
+    top: int = 50,
+    context: dict[str, Any] = None
+) -> dict[str, Any]:
+    """
+    Get upcoming calendar events.
+
+    Args:
+        days_ahead: Number of days ahead to fetch events (default: 7)
+        top: Maximum number of events to return (default: 50)
+        context: Request context (auto-injected)
+
+    Returns:
+        List of calendar events
+    """
+    token = _get_microsoft_token(context or {})
+    client = MicrosoftGraphClient(token)
+    service = OutlookService(client)
+    return await service.get_calendar_events(days_ahead, top)
+
+
+# ==================== Server Entry Point ====================
+
+def run_server() -> None:
+    """Run the MCP server."""
+    # Configure transport based on environment variable
+    transport = config.MCP_TRANSPORT
+
+    if transport == "stdio":
+        # stdio transport doesn't use host/port
+        mcp.run(transport="stdio")
+    else:
+        # Other transports (e.g., streamable-http) may use host/port
+        mcp.run(
+            transport=transport,
+            host=config.MCP_SERVER_HOST,
+            port=config.MCP_SERVER_PORT,
+        )
+
+
+if __name__ == "__main__":
+    run_server()
