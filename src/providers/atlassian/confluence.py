@@ -31,11 +31,11 @@ class ConfluenceService:
         Returns:
             Search results containing matching content
         """
-        endpoint = f"/ex/confluence/{self.client.cloud_id}/rest/api/search"
+        endpoint = f"/ex/confluence/{self.client.cloud_id}/rest/api/content/search"
         params = {
             "cql": cql,
             "limit": limit,
-            "expand": "content.metadata,content.body.view"
+            "expand": "metadata,body.view"
         }
         return await self.client.get(endpoint, params=params)
 
@@ -100,18 +100,4 @@ class ConfluenceService:
             "limit": limit,
             "expand": "body.view,version"
         }
-        return await self.client.get(endpoint, params=params)
-
-    async def get_spaces(self, limit: int = 25) -> dict[str, Any]:
-        """
-        Get Confluence spaces.
-
-        Args:
-            limit: Maximum number of spaces to return (default: 25)
-
-        Returns:
-            List of spaces
-        """
-        endpoint = f"/ex/confluence/{self.client.cloud_id}/rest/api/space"
-        params = {"limit": limit}
         return await self.client.get(endpoint, params=params)

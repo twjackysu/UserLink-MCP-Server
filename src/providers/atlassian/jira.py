@@ -49,9 +49,9 @@ class JiraService:
         if issue_type:
             jql_parts.append(f'issuetype = "{issue_type}"')
 
-        jql = " AND ".join(jql_parts) if jql_parts else "ORDER BY created DESC"
+        jql = " AND ".join(jql_parts) if jql_parts else "project is not EMPTY ORDER BY created DESC"
 
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search"
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         params = {
             "jql": jql,
             "maxResults": max_results,
@@ -74,7 +74,7 @@ class JiraService:
         Returns:
             Search results containing matching issues
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search"
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         params = {
             "jql": jql,
             "maxResults": max_results,
@@ -92,7 +92,7 @@ class JiraService:
         Returns:
             Count of matching issues
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search"
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         params = {
             "jql": jql,
             "maxResults": 0,  # We only want the count
@@ -119,10 +119,11 @@ class JiraService:
         Get all Jira projects.
 
         Returns:
-            List of all projects
+            Dict containing list of all projects
         """
         endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/project"
-        return await self.client.get(endpoint)
+        projects = await self.client.get(endpoint)
+        return {"projects": projects, "total": len(projects) if isinstance(projects, list) else 0}
 
     async def get_project_issues(
         self,
@@ -140,7 +141,7 @@ class JiraService:
             Issues in the project
         """
         jql = f'project = "{project_key}" ORDER BY created DESC'
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search"
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         params = {
             "jql": jql,
             "maxResults": max_results,
@@ -164,7 +165,7 @@ class JiraService:
             Issues in the sprint
         """
         jql = f'sprint = {sprint_id} ORDER BY rank ASC'
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search"
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         params = {
             "jql": jql,
             "maxResults": max_results,

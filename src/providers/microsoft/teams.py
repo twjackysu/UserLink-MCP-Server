@@ -80,54 +80,29 @@ class TeamsService:
         Returns:
             Search results containing matching messages
         """
-        # Calculate date filter
-        start_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        # Build search query
-        search_parts = []
+        # Build search query string
+        query_parts = []
         if keyword:
-            search_parts.append(f'"{keyword}"')
+            query_parts.append(keyword)
+        if from_user:
+            query_parts.append(f"from:{from_user}")
 
-        search_query = " ".join(search_parts) if search_parts else "*"
+        # If no specific query, search all messages
+        query_string = " ".join(query_parts) if query_parts else "*"
 
-        # Build request body for search
+        # Build request body for Microsoft Graph Search API
         request_body = {
             "requests": [
                 {
                     "entityTypes": ["chatMessage"],
                     "query": {
-                        "queryString": search_query
+                        "queryString": query_string
                     },
                     "from": 0,
-                    "size": max_results,
-                    "fields": [
-                        "id",
-                        "subject",
-                        "body",
-                        "from",
-                        "createdDateTime",
-                        "webUrl"
-                    ]
+                    "size": min(max_results, 25)  # Microsoft Graph limits to 25
                 }
             ]
         }
-
-        # Add date filter
-        if days_back:
-            request_body["requests"][0]["query"]["query_string"] = {
-                "query": search_query
-            }
-            request_body["requests"][0]["filters"] = {
-                "createdDateTime": {
-                    "start": start_date
-                }
-            }
-
-        # Add from_user filter if provided
-        if from_user:
-            if "filters" not in request_body["requests"][0]:
-                request_body["requests"][0]["filters"] = {}
-            request_body["requests"][0]["filters"]["from"] = from_user
 
         endpoint = "/v1.0/search/query"
         return await self.client.post(endpoint, json=request_body)

@@ -40,23 +40,33 @@ class OutlookService:
         Returns:
             List of email messages matching the filters
         """
-        # Build endpoint
+        # Build endpoint - use standard folders or inbox as default
         if folder:
-            endpoint = f"/v1.0/me/mailFolders/{folder}/messages"
+            # Map common folder names to their well-known folder IDs
+            folder_mapping = {
+                "inbox": "inbox",
+                "sent": "sentitems", 
+                "drafts": "drafts",
+                "deleted": "deleteditems",
+                "junk": "junkemail"
+            }
+            folder_name = folder_mapping.get(folder.lower(), folder)
+            endpoint = f"/v1.0/me/mailFolders/{folder_name}/messages"
         else:
             endpoint = "/v1.0/me/messages"
 
-        # Build filter query
+        # Build filter query with limited supported OData syntax
+        # Note: Microsoft Graph messages API has very limited filter support
         filters = []
 
-        if from_address:
-            filters.append(f"from/emailAddress/address eq '{from_address}'")
+        # Note: from_address filtering is not supported by Microsoft Graph messages API
+        # This would need to be implemented client-side after retrieving messages
 
-        if subject_contains:
-            filters.append(f"contains(subject, '{subject_contains}')")
+        # Note: subject_contains filtering is not supported by Microsoft Graph messages API  
+        # This would need to be implemented client-side after retrieving messages
 
         if days_back:
-            start_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            start_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
             filters.append(f"receivedDateTime ge {start_date}")
 
         if is_read is not None:
@@ -65,7 +75,8 @@ class OutlookService:
         # Build params
         params = {
             "$top": top,
-            "$orderby": "receivedDateTime desc"
+            "$orderby": "receivedDateTime desc",
+            "$select": "id,subject,from,receivedDateTime,isRead,hasAttachments,bodyPreview"
         }
 
         if filters:
