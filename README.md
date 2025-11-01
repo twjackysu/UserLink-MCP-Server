@@ -17,14 +17,14 @@ Modern knowledge workers have their data scattered across multiple platforms. Us
 
 ## ✨ Features
 
-### 19 Built-in Tools
+### 14 Built-in Tools
 
-UserLink provides 19 read-only tools across 4 services:
+UserLink provides 14 read-only tools across 4 services:
 
 #### Microsoft Teams (4 tools)
 - `teams_get_joined_teams` - Get user's teams
 - `teams_get_team_channels` - Get channels in a team
-- `teams_get_channel_messages` - Get messages from a channel
+- `teams_get_channel_messages` - Search messages (use search_teams_messages for filtering)
 - `teams_search_messages` - Search messages with filters
 
 #### Microsoft Outlook (3 tools)
@@ -35,18 +35,14 @@ UserLink provides 19 read-only tools across 4 services:
 #### Atlassian Jira (7 tools)
 - `jira_search_issues` - Search with filters
 - `jira_search_issues_by_jql` - Search with custom JQL
-- `jira_count_issues_by_jql` - Count issues
+- `jira_count_issues_by_jql` - Count issues (returns total count)
 - `jira_get_issue` - Get issue details
 - `jira_get_all_projects` - List all projects
 - `jira_get_project_issues` - Get project issues
 - `jira_get_sprint_issues` - Get sprint issues
 
-#### Atlassian Confluence (5 tools)
+#### Atlassian Confluence (1 tool)
 - `confluence_search_content` - Search using CQL
-- `confluence_get_page` - Get page details
-- `confluence_get_page_children` - Get child pages
-- `confluence_get_page_comments` - Get page comments
-- `confluence_get_spaces` - List spaces
 
 ## 🚀 Quick Start
 
@@ -205,7 +201,7 @@ await outlook_get_emails(
 await jira_search_issues(
     project="MYPROJ",
     status="In Progress",
-    max_results=50
+    max_results=10
 )
 ```
 
@@ -213,7 +209,7 @@ await jira_search_issues(
 ```python
 await confluence_search_content(
     cql='type=page AND text~"API documentation"',
-    limit=25
+    limit=10
 )
 ```
 

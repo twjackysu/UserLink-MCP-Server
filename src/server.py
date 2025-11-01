@@ -163,12 +163,15 @@ async def jira_count_issues_by_jql(
 ) -> dict[str, Any]:
     """
     Count Jira issues matching JQL query.
+    
+    Fetches all matching issues across multiple pages (if needed) and returns the complete count.
+    This operation may take longer for queries with many results.
 
     Args:
-        jql: JQL query string
+        jql: JQL query string (e.g., 'project=HUB AND status="In Progress"')
 
     Returns:
-        Count of matching issues
+        Total count of matching issues, all issue keys, and the JQL query
     """
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
@@ -263,7 +266,7 @@ async def jira_get_sprint_issues(
 @mcp.tool()
 async def confluence_search_content(
     cql: str,
-    limit: int = 25
+    limit: int = 10
     
 ) -> dict[str, Any]:
     """
@@ -271,7 +274,7 @@ async def confluence_search_content(
 
     Args:
         cql: CQL query string (e.g., 'type=page AND text~"search term"')
-        limit: Maximum number of results (default: 25)
+        limit: Maximum number of results (default: 10)
 
     Returns:
         Search results containing matching content
@@ -281,75 +284,6 @@ async def confluence_search_content(
     client = AtlassianClient(token, cloud_id)
     service = ConfluenceService(client)
     return await service.search_content(cql, limit)
-
-
-@mcp.tool()
-async def confluence_get_page(
-    page_id: str,
-    expand: str = "body.storage,version,space"
-    
-) -> dict[str, Any]:
-    """
-    Get details of a specific Confluence page.
-
-    Args:
-        page_id: Confluence page ID
-        expand: Fields to expand (default: body.storage,version,space)
-
-    Returns:
-        Page details with expanded fields
-    """
-    token = _get_atlassian_token()
-    cloud_id = _get_atlassian_cloud_id()
-    client = AtlassianClient(token, cloud_id)
-    service = ConfluenceService(client)
-    return await service.get_page(page_id, expand)
-
-
-@mcp.tool()
-async def confluence_get_page_children(
-    page_id: str,
-    limit: int = 25
-    
-) -> dict[str, Any]:
-    """
-    Get child pages of a specific Confluence page.
-
-    Args:
-        page_id: Parent page ID
-        limit: Maximum number of child pages (default: 25)
-
-    Returns:
-        List of child pages
-    """
-    token = _get_atlassian_token()
-    cloud_id = _get_atlassian_cloud_id()
-    client = AtlassianClient(token, cloud_id)
-    service = ConfluenceService(client)
-    return await service.get_page_children(page_id, limit)
-
-
-@mcp.tool()
-async def confluence_get_page_comments(
-    page_id: str,
-    limit: int = 50
-    
-) -> dict[str, Any]:
-    """
-    Get comments on a specific Confluence page.
-
-    Args:
-        page_id: Page ID
-        limit: Maximum number of comments (default: 50)
-
-    Returns:
-        List of comments on the page
-    """
-    token = _get_atlassian_token()
-    cloud_id = _get_atlassian_cloud_id()
-    client = AtlassianClient(token, cloud_id)
-    service = ConfluenceService(client)
-    return await service.get_page_comments(page_id, limit)
 
 
 # ==================== Microsoft Teams Tools ====================

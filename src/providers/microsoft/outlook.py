@@ -100,14 +100,14 @@ class OutlookService:
     async def get_calendar_events(
         self,
         days_ahead: int = 7,
-        top: int = 50
+        top: int = 10
     ) -> dict[str, Any]:
         """
         Get upcoming calendar events.
 
         Args:
             days_ahead: Number of days ahead to fetch events (default: 7)
-            top: Maximum number of events to return (default: 50)
+            top: Maximum number of events to return (default: 10)
 
         Returns:
             List of calendar events

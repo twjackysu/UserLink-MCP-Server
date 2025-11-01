@@ -85,21 +85,52 @@ class JiraService:
     async def count_issues_by_jql(self, jql: str) -> dict[str, Any]:
         """
         Count Jira issues matching JQL query.
+        
+        This method fetches all matching issues across multiple pages (if needed)
+        and returns the complete count and all issue keys.
+        Uses maxResults=100 (Jira Cloud API maximum) to minimize API calls.
 
         Args:
             jql: JQL query string
 
         Returns:
-            Count of matching issues
+            Total count of matching issues and all matching issue keys
         """
         endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
-        params = {
+        all_issues = []
+        start_at = 0
+        max_results_per_page = 100  # Jira Cloud API maximum
+        total = None
+        max_iterations = 10000  # Safety limit to prevent infinite loops
+        iteration_count = 0
+        
+        while iteration_count < max_iterations:
+            iteration_count += 1
+            
+            params = {
+                "jql": jql,
+                "startAt": start_at,
+                "maxResults": max_results_per_page,
+                "fields": "key"  # Only fetch the key field to minimize data transfer
+            }
+            response = await self.client.get(endpoint, params=params)
+            
+            issues = response.get("issues", [])
+            all_issues.extend(issues)
+            total = response.get("total", 0)
+            
+            # Stop if we've fetched all results or got no more issues
+            if len(issues) == 0 or len(all_issues) >= total:
+                break
+            
+            start_at += max_results_per_page
+        
+        return {
+            "count": len(all_issues),
+            "total_available": total if total is not None else len(all_issues),
             "jql": jql,
-            "maxResults": 0,  # We only want the count
-            "fields": "summary"  # Minimal fields
+            "issue_keys": [issue.get("key") for issue in all_issues]
         }
-        response = await self.client.get(endpoint, params=params)
-        return {"total": response.get("total", 0), "jql": jql}
 
     async def get_issue(self, issue_key: str) -> dict[str, Any]:
         """

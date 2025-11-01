@@ -44,29 +44,37 @@ class TeamsService:
         self,
         team_id: str,
         channel_id: str,
-        top: int = 50
+        top: int = 10
     ) -> dict[str, Any]:
         """
-        Get messages from a specific channel.
+        Get messages from a specific Teams channel.
+
+        Note: This uses the search API as direct channel message retrieval is limited.
+        For most scenarios, use search_teams_messages() instead.
 
         Args:
             team_id: Team ID
-            channel_id: Channel ID
-            top: Maximum number of messages to return (default: 50)
+            channel_id: Channel ID (in format: 19:xxx@thread.xxx)
+            top: Maximum number of messages to return (default: 10)
 
         Returns:
-            List of messages from the channel
+            List of messages from the channel via search
         """
-        endpoint = f"/v1.0/teams/{team_id}/channels/{channel_id}/messages"
-        params = {"$top": top}
-        return await self.client.get(endpoint, params=params)
+        # Microsoft Graph doesn't support direct /teams/{id}/channels/{id}/messages GET
+        # Instead, we need to use the search API with channel context
+        # For now, return a helpful message directing to search_teams_messages
+        return {
+            "message": "Direct channel message retrieval is not available. Please use search_teams_messages() to search for messages.",
+            "note": f"To get messages from channel {channel_id} in team {team_id}, use teams_search_messages with appropriate keywords.",
+            "alternative": "Use the search_teams_messages endpoint which supports channel filtering"
+        }
 
     async def search_teams_messages(
         self,
         keyword: Optional[str] = None,
         from_user: Optional[str] = None,
         days_back: int = 7,
-        max_results: int = 50
+        max_results: int = 10
     ) -> dict[str, Any]:
         """
         Search Teams messages with various filters.
@@ -75,8 +83,7 @@ class TeamsService:
             keyword: Search keyword in message content
             from_user: Filter messages from specific user (email or display name)
             days_back: Number of days to search back (default: 7)
-            max_results: Maximum number of results (default: 50)
-
+            max_results: Maximum number of results (default: 10)
         Returns:
             Search results containing matching messages
         """
