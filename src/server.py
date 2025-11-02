@@ -261,6 +261,42 @@ async def jira_get_sprint_issues(
     return await service.get_sprint_issues(sprint_id, max_results)
 
 
+@mcp.tool()
+async def jira_get_issue_comments(issue_key: str) -> dict[str, Any]:
+    """
+    Get all comments for a specific Jira issue.
+
+    Args:
+        issue_key: Issue key (e.g., PROJ-123)
+
+    Returns:
+        List of comments with author, creation time, and content
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_issue_comments(issue_key)
+
+
+@mcp.tool()
+async def jira_get_issue_worklogs(issue_key: str) -> dict[str, Any]:
+    """
+    Get all worklogs (time tracking entries) for a specific Jira issue.
+
+    Args:
+        issue_key: Issue key (e.g., PROJ-123)
+
+    Returns:
+        List of worklogs with author, time spent, and work description
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = JiraService(client)
+    return await service.get_issue_worklogs(issue_key)
+
+
 # ==================== Atlassian Confluence Tools ====================
 
 @mcp.tool()
@@ -284,6 +320,88 @@ async def confluence_search_content(
     client = AtlassianClient(token, cloud_id)
     service = ConfluenceService(client)
     return await service.search_content(cql, limit)
+
+
+@mcp.tool()
+async def confluence_get_space(space_key: str) -> dict[str, Any]:
+    """
+    Get information about a specific Confluence space.
+
+    Args:
+        space_key: Space key (e.g., 'PROJ', 'TEAM')
+
+    Returns:
+        Space information including name, description, and metadata
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_space(space_key)
+
+
+@mcp.tool()
+async def confluence_get_page(page_id: str) -> dict[str, Any]:
+    """
+    Get a specific Confluence page with full content.
+
+    Args:
+        page_id: Page ID
+
+    Returns:
+        Page details including title, body content, and metadata
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_page(page_id)
+
+
+@mcp.tool()
+async def confluence_get_space_pages(
+    space_id: str,
+    limit: int = 25
+    
+) -> dict[str, Any]:
+    """
+    Get all pages in a specific Confluence space.
+
+    Args:
+        space_id: Space ID (numeric ID, not the space key)
+        limit: Maximum number of pages to return (default: 25)
+
+    Returns:
+        List of pages in the space
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_space_pages(space_id, limit)
+
+
+@mcp.tool()
+async def confluence_get_page_children(
+    page_id: str,
+    limit: int = 25
+    
+) -> dict[str, Any]:
+    """
+    Get child pages of a specific Confluence page.
+
+    Args:
+        page_id: Parent page ID
+        limit: Maximum number of child pages to return (default: 25)
+
+    Returns:
+        List of child pages
+    """
+    token = _get_atlassian_token()
+    cloud_id = _get_atlassian_cloud_id()
+    client = AtlassianClient(token, cloud_id)
+    service = ConfluenceService(client)
+    return await service.get_page_children(page_id, limit)
 
 
 # ==================== Microsoft Teams Tools ====================
@@ -371,6 +489,46 @@ async def teams_search_messages(
     return await service.search_teams_messages(keyword, from_user, days_back, max_results)
 
 
+@mcp.tool()
+async def teams_list_my_chats(
+    top: int = 50
+) -> dict[str, Any]:
+    """
+    Get user's chat conversations.
+
+    Args:
+        top: Maximum number of chats to return (default: 50)
+
+    Returns:
+        List of chat conversations
+    """
+    token = _get_microsoft_token()
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.list_my_chats(top)
+
+
+@mcp.tool()
+async def teams_list_chat_messages(
+    chat_id: str,
+    top: int = 50
+) -> dict[str, Any]:
+    """
+    Get messages from a specific chat.
+
+    Args:
+        chat_id: Chat ID (get from teams_list_my_chats)
+        top: Maximum number of messages to return (default: 50)
+
+    Returns:
+        List of messages from the chat
+    """
+    token = _get_microsoft_token()
+    client = MicrosoftGraphClient(token)
+    service = TeamsService(client)
+    return await service.list_chat_messages(chat_id, top)
+
+
 # ==================== Microsoft Outlook Tools ====================
 
 @mcp.tool()
@@ -418,6 +576,27 @@ async def outlook_get_message(message_id: str) -> dict[str, Any]:
     client = MicrosoftGraphClient(token)
     service = OutlookService(client)
     return await service.get_message(message_id)
+
+
+@mcp.tool()
+async def outlook_search_emails(
+    query: str,
+    top: int = 10
+) -> dict[str, Any]:
+    """
+    Search emails using Keyword Query Language (KQL).
+
+    Args:
+        query: KQL query string (e.g., 'from:user@example.com subject:report')
+        top: Maximum number of results (default: 10, max: 25)
+
+    Returns:
+        List of email messages matching the search query
+    """
+    token = _get_microsoft_token()
+    client = MicrosoftGraphClient(token)
+    service = OutlookService(client)
+    return await service.search_emails(query, top)
 
 
 @mcp.tool()

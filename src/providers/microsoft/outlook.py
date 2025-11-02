@@ -29,11 +29,15 @@ class OutlookService:
         """
         Get user's email messages with advanced filtering.
 
+        Note: Microsoft Graph messages API has limited filter support.
+        For complex queries (e.g., filtering by sender or subject),
+        use outlook_search_emails() instead.
+
         Args:
             top: Number of messages to return (default: 10)
             folder: Folder name to search in (e.g., 'inbox', 'sent')
-            from_address: Filter emails from specific sender
-            subject_contains: Filter emails with subject containing text
+            from_address: Filter emails from specific sender (Note: Not supported, use outlook_search_emails)
+            subject_contains: Filter emails with subject containing text (Note: Not supported, use outlook_search_emails)
             days_back: Number of days to search back
             is_read: Filter by read status (True/False)
 
@@ -124,4 +128,35 @@ class OutlookService:
             "$orderby": "start/dateTime"
         }
 
+        return await self.client.get(endpoint, params=params)
+
+    async def search_emails(
+        self,
+        query: str,
+        top: int = 10
+    ) -> dict[str, Any]:
+        """
+        Search emails using Microsoft Graph Search API with KQL (Keyword Query Language).
+
+        This method supports complex queries including sender, subject, and full-text search.
+
+        Args:
+            query: Search query using KQL syntax
+                   Examples:
+                   - "from:john@example.com" - emails from specific sender
+                   - "subject:urgent" - emails with "urgent" in subject
+                   - "from:john@example.com subject:meeting" - combined filters
+                   - "project update" - full-text search
+            top: Maximum number of results (default: 10, max: 25)
+
+        Returns:
+            Search results containing matching emails
+        """
+        endpoint = "/v1.0/me/messages"
+        params = {
+            "$search": f'"{query}"',
+            "$top": min(top, 25),  # Graph API limits to 25
+            "$orderby": "receivedDateTime desc",
+            "$select": "id,subject,from,receivedDateTime,isRead,hasAttachments,bodyPreview"
+        }
         return await self.client.get(endpoint, params=params)

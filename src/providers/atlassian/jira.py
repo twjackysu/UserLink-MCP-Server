@@ -203,3 +203,29 @@ class JiraService:
             "fields": "summary,status,assignee,created,updated,priority,issuetype,description,customfield_10016"
         }
         return await self.client.get(endpoint, params=params)
+
+    async def get_issue_comments(self, issue_key: str) -> dict[str, Any]:
+        """
+        Get all comments for a specific Jira issue.
+
+        Args:
+            issue_key: Issue key (e.g., PROJ-123)
+
+        Returns:
+            List of comments with author, creation time, and content
+        """
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/issue/{issue_key}/comment"
+        return await self.client.get(endpoint)
+
+    async def get_issue_worklogs(self, issue_key: str) -> dict[str, Any]:
+        """
+        Get all worklogs (time tracking entries) for a specific Jira issue.
+
+        Args:
+            issue_key: Issue key (e.g., PROJ-123)
+
+        Returns:
+            List of worklogs with author, time spent, and work description
+        """
+        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/issue/{issue_key}/worklog"
+        return await self.client.get(endpoint)

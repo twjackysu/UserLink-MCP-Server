@@ -18,38 +18,47 @@ Modern knowledge workers have their data scattered across multiple platforms. Us
 
 ## ✨ Features
 
-### 15 Built-in Tools
+### 21 Built-in Tools
 
-UserLink provides 15 read-only tools across 4 services:
+UserLink provides 21 read-only tools across 4 services:
 
-#### Microsoft Teams (4 tools)
+#### Microsoft Teams (6 tools)
 - `teams_get_joined_teams` - Get user's teams
 - `teams_get_team_channels` - Get channels in a team
 - `teams_get_channel_messages` - Search messages (use search_teams_messages for filtering)
 - `teams_search_messages` - Search messages with filters
+- `teams_list_my_chats` - Get user's chat conversations
+- `teams_list_chat_messages` - Get messages from a specific chat
 
 **Example:** "What did the team discuss about the project delay in the last standup?"
 
-#### Microsoft Outlook (3 tools)
+#### Microsoft Outlook (4 tools)
 - `outlook_get_emails` - Get emails with advanced filtering
+- `outlook_search_emails` - Search emails using KQL (Keyword Query Language)
 - `outlook_get_message` - Get specific email details
 - `outlook_get_calendar_events` - Get upcoming calendar events
 
 **Example:** "Summarize action items from my manager's emails this week"
 
-#### Atlassian Jira (7 tools)
+#### Atlassian Jira (9 tools)
 - `jira_search_issues` - Search with filters
 - `jira_search_issues_by_jql` - Search with custom JQL
 - `jira_count_issues_by_jql` - Count issues (returns total count)
 - `jira_get_issue` - Get issue details
+- `jira_get_issue_comments` - Get all comments on an issue
+- `jira_get_issue_worklogs` - Get work logs for an issue
 - `jira_get_all_projects` - List all projects
 - `jira_get_project_issues` - Get project issues
 - `jira_get_sprint_issues` - Get sprint issues
 
 **Example:** "What are the high-priority blockers preventing this sprint from completing?"
 
-#### Atlassian Confluence (1 tool)
+#### Atlassian Confluence (5 tools)
 - `confluence_search_content` - Search using CQL
+- `confluence_get_space` - Get space information by space key
+- `confluence_get_page` - Get page content with full details
+- `confluence_get_space_pages` - List all pages in a space
+- `confluence_get_page_children` - Get child pages of a page
 
 **Example:** "Find the latest architecture decision records for the payment service"
 
@@ -115,6 +124,27 @@ x-atlassian-cloud-id: <cloud_id>
 - Tokens should NOT include the "Bearer " prefix
 - Pass the raw token value directly
 - The accessed data will be limited to what this specific user has permissions for
+
+### Required OAuth Scopes
+
+When implementing OAuth for your connector, request these scopes:
+
+#### Microsoft Graph (Teams, Outlook, Calendar)
+```
+User.Read
+Chat.Read
+ChannelMessage.Read.All
+Team.ReadBasic.All
+Mail.Read
+Calendars.Read
+```
+
+#### Atlassian (Jira, Confluence)
+```
+read:jira-work
+read:confluence-content.all
+read:confluence-space.summary
+```
 
 > **Note**: For connecting this MCP server to VS Code or Claude Desktop, see the configuration example in [`.vscode/mcp.json`](.vscode/mcp.json).
 

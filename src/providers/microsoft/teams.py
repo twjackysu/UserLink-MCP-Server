@@ -113,3 +113,34 @@ class TeamsService:
 
         endpoint = "/v1.0/search/query"
         return await self.client.post(endpoint, json=request_body)
+
+    async def list_my_chats(self, top: int = 50) -> dict[str, Any]:
+        """
+        Get user's chat conversations.
+
+        Args:
+            top: Maximum number of chats to return (default: 50)
+
+        Returns:
+            List of chat conversations
+        """
+        endpoint = "/v1.0/me/chats"
+        params = {"$top": str(top)}
+        return await self.client.get(endpoint, params=params)
+
+    async def list_chat_messages(
+        self, chat_id: str, top: int = 50
+    ) -> dict[str, Any]:
+        """
+        Get messages from a specific chat.
+
+        Args:
+            chat_id: Chat ID (get from list_my_chats)
+            top: Maximum number of messages to return (default: 50)
+
+        Returns:
+            List of messages from the chat
+        """
+        endpoint = f"/v1.0/me/chats/{chat_id}/messages"
+        params = {"$top": str(top)}
+        return await self.client.get(endpoint, params=params)
