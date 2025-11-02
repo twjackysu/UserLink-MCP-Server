@@ -1,7 +1,7 @@
 # 🌉 UserLink MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10-3.14](https://img.shields.io/badge/python-3.10--3.14-blue.svg)](https://www.python.org/downloads/)
 
 **UserLink** is an open-source MCP (Model Context Protocol) server that aggregates data from enterprise SaaS platforms (Jira, Confluence, Teams, Outlook) into a unified interface for AI agents and applications. It operates purely on **individual user credentials**, allowing AI agents to access only the data that the authenticated user themselves can access.
 
@@ -57,7 +57,7 @@ UserLink provides 15 read-only tools across 4 services:
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10 - 3.14
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ### Installation
