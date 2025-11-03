@@ -1,7 +1,12 @@
 """Jira service implementation."""
 
-from typing import Any, Optional, List
+import logging
+from typing import Any, Optional, List, Union
 from .base import AtlassianClient
+from src.models.jira import JiraIssue, JiraSearchResult, JiraComment, JiraWorklog
+from .utils.jira_constants import DEFAULT_READ_JIRA_FIELDS, MINIMAL_JIRA_FIELDS
+
+logger = logging.getLogger(__name__)
 
 
 class JiraService:
@@ -15,15 +20,17 @@ class JiraService:
             client: Atlassian API client instance
         """
         self.client = client
+        self.jira = client.jira
 
-    async def search_issues(
+    def search_issues(
         self,
         project: Optional[str] = None,
         status: Optional[str] = None,
         assignee: Optional[str] = None,
         issue_type: Optional[str] = None,
-        max_results: int = 50
-    ) -> dict[str, Any]:
+        max_results: int = 50,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraSearchResult:
         """
         Search Jira issues with filters.
 
@@ -33,9 +40,10 @@ class JiraService:
             assignee: Assignee email or name (optional)
             issue_type: Issue type to filter by (optional)
             max_results: Maximum number of results (default: 50)
+            fields: List of fields to include (optional)
 
         Returns:
-            Search results containing matching issues
+            JiraSearchResult with matching issues
         """
         # Build JQL query
         jql_parts = []
@@ -51,44 +59,83 @@ class JiraService:
 
         jql = " AND ".join(jql_parts) if jql_parts else "project is not EMPTY ORDER BY created DESC"
 
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
-        params = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": "summary,status,assignee,created,updated,priority,issuetype,description"
-        }
-        return await self.client.get(endpoint, params=params)
+        # Use the common search method
+        return self._search_with_models(jql, max_results, fields)
 
-    async def search_issues_by_jql(
+    def search_issues_by_jql(
         self,
         jql: str,
-        max_results: int = 50
-    ) -> dict[str, Any]:
+        max_results: int = 50,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraSearchResult:
         """
         Search Jira issues using custom JQL query.
 
         Args:
             jql: Custom JQL query string
             max_results: Maximum number of results (default: 50)
+            fields: List of fields to include (optional)
 
         Returns:
-            Search results containing matching issues
+            JiraSearchResult with matching issues
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
-        params = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": "summary,status,assignee,created,updated,priority,issuetype,description"
-        }
-        return await self.client.get(endpoint, params=params)
+        return self._search_with_models(jql, max_results, fields)
 
-    async def count_issues_by_jql(self, jql: str) -> dict[str, Any]:
+    def _search_with_models(
+        self,
+        jql: str,
+        max_results: int = 50,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraSearchResult:
+        """
+        Internal method to search with Pydantic models.
+
+        Args:
+            jql: JQL query string
+            max_results: Maximum number of results
+            fields: Fields to include - can be:
+                - "*all" for all fields
+                - comma-separated string (e.g., "summary,status,assignee")
+                - list of field names
+                - None for default fields
+
+        Returns:
+            JiraSearchResult instance
+        """
+        # Parse fields parameter
+        if fields == "*all":
+            fields_str = "*all"
+            requested_fields = "*all"
+        elif isinstance(fields, str) and fields:
+            # Comma-separated string
+            fields_list = [f.strip() for f in fields.split(",")]
+            fields_str = ",".join(fields_list)
+            requested_fields = fields_list
+        elif isinstance(fields, list) and fields:
+            # List of fields
+            fields_str = ",".join(fields)
+            requested_fields = fields
+        else:
+            # Default fields for reasonable response size
+            fields_str = ",".join(MINIMAL_JIRA_FIELDS)
+            requested_fields = MINIMAL_JIRA_FIELDS
+
+        # Execute search
+        response = self.jira.jql(jql, limit=max_results, fields=fields_str)
+
+        # Convert to model
+        return JiraSearchResult.from_api_response(
+            response,
+            requested_fields=requested_fields,
+            base_url=self.client.jira_url
+        )
+
+    def count_issues_by_jql(self, jql: str) -> dict[str, Any]:
         """
         Count Jira issues matching JQL query.
         
         This method fetches all matching issues across multiple pages (if needed)
         and returns the complete count and all issue keys.
-        Uses maxResults=100 (Jira Cloud API maximum) to minimize API calls.
 
         Args:
             jql: JQL query string
@@ -96,7 +143,6 @@ class JiraService:
         Returns:
             Total count of matching issues and all matching issue keys
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
         all_issues = []
         start_at = 0
         max_results_per_page = 100  # Jira Cloud API maximum
@@ -107,13 +153,13 @@ class JiraService:
         while iteration_count < max_iterations:
             iteration_count += 1
             
-            params = {
-                "jql": jql,
-                "startAt": start_at,
-                "maxResults": max_results_per_page,
-                "fields": "key"  # Only fetch the key field to minimize data transfer
-            }
-            response = await self.client.get(endpoint, params=params)
+            # Use jql method with pagination
+            response = self.jira.jql(
+                jql, 
+                start=start_at, 
+                limit=max_results_per_page,
+                fields="key"
+            )
             
             issues = response.get("issues", [])
             all_issues.extend(issues)
@@ -132,79 +178,108 @@ class JiraService:
             "issue_keys": [issue.get("key") for issue in all_issues]
         }
 
-    async def get_issue(self, issue_key: str) -> dict[str, Any]:
+    def get_issue(
+        self,
+        issue_key: str,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraIssue:
         """
         Get details of a specific Jira issue.
 
         Args:
             issue_key: Issue key (e.g., PROJ-123)
+            fields: Fields to include - can be:
+                - "*all" for all fields
+                - comma-separated string (e.g., "summary,status,assignee")
+                - list of field names
+                - None for default fields
 
         Returns:
-            Issue details
+            JiraIssue instance
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/issue/{issue_key}"
-        return await self.client.get(endpoint)
+        # Parse fields parameter
+        if fields == "*all":
+            fields_str = "*all"
+            requested_fields = "*all"
+        elif isinstance(fields, str) and fields:
+            # Comma-separated string
+            fields_list = [f.strip() for f in fields.split(",")]
+            fields_str = ",".join(fields_list)
+            requested_fields = fields_list
+        elif isinstance(fields, list) and fields:
+            # List of fields
+            fields_str = ",".join(fields)
+            requested_fields = fields
+        else:
+            # Default fields for issue details
+            fields_str = ",".join(DEFAULT_READ_JIRA_FIELDS)
+            requested_fields = DEFAULT_READ_JIRA_FIELDS
 
-    async def get_all_projects(self) -> dict[str, Any]:
+        response = self.jira.issue(issue_key, fields=fields_str)
+
+        # Convert to model
+        issue = JiraIssue.from_api_response(
+            response,
+            requested_fields=requested_fields
+        )
+
+        # Set full URL
+        if issue.url:
+            issue.url = f"{self.client.jira_url}{issue.url}"
+
+        return issue
+
+    def get_all_projects(self) -> dict[str, Any]:
         """
         Get all Jira projects.
 
         Returns:
             Dict containing list of all projects
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/project"
-        projects = await self.client.get(endpoint)
+        projects = self.jira.projects()
         return {"projects": projects, "total": len(projects) if isinstance(projects, list) else 0}
 
-    async def get_project_issues(
+    def get_project_issues(
         self,
         project_key: str,
-        max_results: int = 50
-    ) -> dict[str, Any]:
+        max_results: int = 50,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraSearchResult:
         """
         Get issues for a specific project.
 
         Args:
             project_key: Project key
             max_results: Maximum number of results (default: 50)
+            fields: List of fields to include (optional)
 
         Returns:
-            Issues in the project
+            JiraSearchResult with project issues
         """
         jql = f'project = "{project_key}" ORDER BY created DESC'
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
-        params = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": "summary,status,assignee,created,updated,priority,issuetype,description"
-        }
-        return await self.client.get(endpoint, params=params)
+        return self._search_with_models(jql, max_results, fields)
 
-    async def get_sprint_issues(
+    def get_sprint_issues(
         self,
         sprint_id: str,
-        max_results: int = 100
-    ) -> dict[str, Any]:
+        max_results: int = 100,
+        fields: Optional[Union[str, List[str]]] = None
+    ) -> JiraSearchResult:
         """
         Get issues in a specific sprint.
 
         Args:
             sprint_id: Sprint ID
             max_results: Maximum number of results (default: 100)
+            fields: List of fields to include (optional)
 
         Returns:
-            Issues in the sprint
+            JiraSearchResult with sprint issues
         """
         jql = f'sprint = {sprint_id} ORDER BY rank ASC'
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/search/jql"
-        params = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": "summary,status,assignee,created,updated,priority,issuetype,description,customfield_10016"
-        }
-        return await self.client.get(endpoint, params=params)
+        return self._search_with_models(jql, max_results, fields)
 
-    async def get_issue_comments(self, issue_key: str) -> dict[str, Any]:
+    def get_issue_comments(self, issue_key: str) -> List[JiraComment]:
         """
         Get all comments for a specific Jira issue.
 
@@ -212,12 +287,21 @@ class JiraService:
             issue_key: Issue key (e.g., PROJ-123)
 
         Returns:
-            List of comments with author, creation time, and content
+            List of JiraComment instances
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/issue/{issue_key}/comment"
-        return await self.client.get(endpoint)
+        response = self.jira.issue_get_comments(issue_key)
 
-    async def get_issue_worklogs(self, issue_key: str) -> dict[str, Any]:
+        comments = []
+        if isinstance(response, dict):
+            comments_data = response.get("comments", [])
+            if isinstance(comments_data, list):
+                for comment_data in comments_data:
+                    if comment_data:
+                        comments.append(JiraComment.from_api_response(comment_data))
+
+        return comments
+
+    def get_issue_worklogs(self, issue_key: str) -> List[JiraWorklog]:
         """
         Get all worklogs (time tracking entries) for a specific Jira issue.
 
@@ -225,7 +309,18 @@ class JiraService:
             issue_key: Issue key (e.g., PROJ-123)
 
         Returns:
-            List of worklogs with author, time spent, and work description
+            List of JiraWorklog instances
         """
-        endpoint = f"/ex/jira/{self.client.cloud_id}/rest/api/3/issue/{issue_key}/worklog"
-        return await self.client.get(endpoint)
+        response = self.jira.issue_get_worklog(issue_key)
+
+        worklogs = []
+        if isinstance(response, dict):
+            worklogs_data = response.get("worklogs", [])
+            if isinstance(worklogs_data, list):
+                for worklog_data in worklogs_data:
+                    if worklog_data:
+                        worklogs.append(JiraWorklog.from_api_response(worklog_data))
+
+        return worklogs
+
+

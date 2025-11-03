@@ -112,7 +112,7 @@ async def jira_search_issues(
     issue_type: str = None,
     max_results: int = 50
     
-) -> dict[str, Any]:
+) -> str:
     """
     Search Jira issues with filters.
 
@@ -124,36 +124,55 @@ async def jira_search_issues(
         max_results: Maximum number of results (default: 50)
 
     Returns:
-        Search results containing matching issues
+        JSON string of search results with slim issue representations
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.search_issues(project, status, assignee, issue_type, max_results)
+    
+    search_result = service.search_issues(project, status, assignee, issue_type, max_results)
+    return json.dumps(search_result.to_simplified_dict(), indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
 async def jira_search_issues_by_jql(
     jql: str,
-    max_results: int = 50
+    max_results: int = 50,
+    fields: str = None
     
-) -> dict[str, Any]:
+) -> str:
     """
-    Search Jira issues using custom JQL query.
+    Search Jira issues using JQL (Jira Query Language).
 
     Args:
-        jql: Custom JQL query string
+        jql: JQL query string. Examples:
+            - Find Epics: "issuetype = Epic AND project = BIFO"
+            - Find issues in Epic: "parent = BIFO-123"
+            - Find by status: "status = 'In Progress' AND project = BIFO"
+            - Find by assignee: "assignee = currentUser()"
+            - Find recently updated: "updated >= -7d AND project = BIFO"
+            - Find by label: "labels = frontend AND project = BIFO"
+            - Find by priority: "priority = High AND project = BIFO"
+            - Order results: "project = BIFO ORDER BY created DESC"
         max_results: Maximum number of results (default: 50)
+        fields: Comma-separated fields to return (e.g., 'summary,status,assignee').
+                Use '*all' for all fields, or omit for default fields (summary,status,assignee,issuetype,priority,created,updated)
 
     Returns:
-        Search results containing matching issues
+        JSON string of search results with slim issue representations
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.search_issues_by_jql(jql, max_results)
+    
+    search_result = service.search_issues_by_jql(jql, max_results, fields)
+    return json.dumps(search_result.to_simplified_dict(), indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -177,25 +196,35 @@ async def jira_count_issues_by_jql(
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.count_issues_by_jql(jql)
+    return service.count_issues_by_jql(jql)
 
 
 @mcp.tool()
-async def jira_get_issue(issue_key: str) -> dict[str, Any]:
+async def jira_get_issue(
+    issue_key: str,
+    fields: str = None
+) -> str:
     """
     Get details of a specific Jira issue.
 
     Args:
-        issue_key: Jira issue key (e.g., PROJ-123)
+        issue_key: Jira issue key (e.g., 'PROJ-123', 'BIFO-456')
+        fields: Comma-separated fields to return (e.g., 'summary,status,assignee,description,comment').
+                Use '*all' for all fields (including custom fields), or omit for default fields
+                (summary,description,status,assignee,reporter,labels,priority,created,updated,issuetype)
 
     Returns:
-        Issue details
+        JSON string of issue details with slim representation
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_issue(issue_key)
+    
+    issue = service.get_issue(issue_key, fields)
+    return json.dumps(issue.to_simplified_dict(), indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -212,7 +241,7 @@ async def jira_get_all_projects() -> dict[str, Any]:
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_all_projects()
+    return service.get_all_projects()
 
 
 @mcp.tool()
@@ -220,22 +249,26 @@ async def jira_get_project_issues(
     project_key: str,
     max_results: int = 50
     
-) -> dict[str, Any]:
+) -> str:
     """
     Get issues for a specific project.
 
     Args:
-        project_key: Project key
+        project_key: Project key (e.g., 'BIFO', 'HUB')
         max_results: Maximum number of results (default: 50)
 
     Returns:
-        Issues in the project
+        JSON string of search results with slim issue representations
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_project_issues(project_key, max_results)
+    
+    search_result = service.get_project_issues(project_key, max_results)
+    return json.dumps(search_result.to_simplified_dict(), indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -243,7 +276,7 @@ async def jira_get_sprint_issues(
     sprint_id: str,
     max_results: int = 100
     
-) -> dict[str, Any]:
+) -> str:
     """
     Get issues in a specific sprint.
 
@@ -252,55 +285,75 @@ async def jira_get_sprint_issues(
         max_results: Maximum number of results (default: 100)
 
     Returns:
-        Issues in the sprint
+        JSON string of search results with slim issue representations
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_sprint_issues(sprint_id, max_results)
+    
+    search_result = service.get_sprint_issues(sprint_id, max_results)
+    return json.dumps(search_result.to_simplified_dict(), indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def jira_get_issue_comments(issue_key: str) -> dict[str, Any]:
+async def jira_get_issue_comments(issue_key: str) -> str:
     """
     Get all comments for a specific Jira issue.
 
     Args:
-        issue_key: Issue key (e.g., PROJ-123)
+        issue_key: Issue key (e.g., PROJ-123, BIFO-456)
 
     Returns:
-        List of comments with author, creation time, and content
+        JSON string of comments with slim representation
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_issue_comments(issue_key)
+    
+    comments = service.get_issue_comments(issue_key)
+    result = {
+        "total": len(comments),
+        "comments": [comment.to_simplified_dict() for comment in comments]
+    }
+    return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def jira_get_issue_worklogs(issue_key: str) -> dict[str, Any]:
+async def jira_get_issue_worklogs(issue_key: str) -> str:
     """
     Get all worklogs (time tracking entries) for a specific Jira issue.
 
     Args:
-        issue_key: Issue key (e.g., PROJ-123)
+        issue_key: Issue key (e.g., PROJ-123, BIFO-456)
 
     Returns:
-        List of worklogs with author, time spent, and work description
+        JSON string of worklogs with slim representation
     """
+    import json
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = JiraService(client)
-    return await service.get_issue_worklogs(issue_key)
+    
+    worklogs = service.get_issue_worklogs(issue_key)
+    result = {
+        "total": len(worklogs),
+        "worklogs": [worklog.to_simplified_dict() for worklog in worklogs]
+    }
+    return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 # ==================== Atlassian Confluence Tools ====================
 
 @mcp.tool()
-async def confluence_search_content(
+def confluence_search_content(
     cql: str,
     limit: int = 10
     
@@ -315,11 +368,42 @@ async def confluence_search_content(
     Returns:
         Search results containing matching content
     """
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
     token = _get_atlassian_token()
     cloud_id = _get_atlassian_cloud_id()
     client = AtlassianClient(token, cloud_id)
     service = ConfluenceService(client)
-    return await service.search_content(cql, limit)
+    
+    # Check if the query is a simple search term or already a CQL query
+    query = cql
+    if query and not any(
+        x in query for x in ["=", "~", ">", "<", " AND ", " OR ", "currentUser()"]
+    ):
+        original_query = query
+        try:
+            query = f'siteSearch ~ "{original_query}"'
+            logger.info(
+                f"Converting simple search term to CQL using siteSearch: {query}"
+            )
+            pages = service.search(query, limit=limit)
+        except Exception as e:
+            logger.warning(f"siteSearch failed ('{e}'), falling back to text search.")
+            query = f'text ~ "{original_query}"'
+            logger.info(f"Falling back to text search with CQL: {query}")
+            pages = service.search(query, limit=limit)
+    else:
+        pages = service.search(query, limit=limit)
+    
+    # Convert to simplified dict for response
+    search_results = [page.to_simplified_dict() for page in pages]
+    return {
+        "total": len(search_results),
+        "query": query,
+        "results": search_results
+    }
 
 
 
