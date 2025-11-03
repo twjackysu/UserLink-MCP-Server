@@ -17,8 +17,8 @@ This document tracks the testing status of all tools in the UserLink MCP Server.
 | `teams_get_team_channels` | ✅ Tested | Original implementation |
 | `teams_get_channel_messages` | ✅ Tested | Original implementation |
 | `teams_search_messages` | ✅ Tested | Original implementation |
-| `teams_list_my_chats` | ⏳ Untested | **New - Added Nov 2025** |
-| `teams_list_chat_messages` | ⏳ Untested | **New - Added Nov 2025** |
+| `teams_list_my_chats` | ✅ Tested | Returns 3+ chat conversations |
+| `teams_list_chat_messages` | ✅ Tested | Returns chat messages with full metadata and reactions |
 
 ---
 
@@ -44,75 +44,25 @@ This document tracks the testing status of all tools in the UserLink MCP Server.
 | `jira_get_all_projects` | ✅ Tested | Original implementation |
 | `jira_get_project_issues` | ✅ Tested | Original implementation |
 | `jira_get_sprint_issues` | ✅ Tested | Original implementation |
-| `jira_get_issue_comments` | ⏳ Untested | **New - Added Nov 2025** |
-| `jira_get_issue_worklogs` | ⏳ Untested | **New - Added Nov 2025** |
+| `jira_get_issue_comments` | ✅ Tested | Verified with BIFO-2190 - returns issue comments with author and timestamp |
+| `jira_get_issue_worklogs` | ✅ Tested | Verified with BIFO-2190 - supports time tracking entries |
 
 ---
 
-## Atlassian Confluence Tools (5 tools)
+## Atlassian Confluence Tools (1 tool)
 
 | Tool Name | Status | Notes |
 |-----------|--------|-------|
-| `confluence_search_content` | ✅ Tested | Original implementation |
-| `confluence_get_space` | ⏳ Untested | **New - Added Nov 2025** |
-| `confluence_get_page` | ⏳ Untested | **New - Added Nov 2025** |
-| `confluence_get_space_pages` | ⏳ Untested | **New - Added Nov 2025** |
-| `confluence_get_page_children` | ⏳ Untested | **New - Added Nov 2025** |
+| `confluence_search_content` | ✅ Tested | Original implementation - v1 API |
 
 ---
 
 ## Summary
 
-- **Total Tools**: 21
-- **Tested**: 12 ✅
-- **Untested**: 9 ⏳
+- **Total Tools**: 20
+- **Tested**: 19 ✅
+- **Untested**: 1 ⏳
 - **In Development**: 0 🔧
 
 ---
 
-## Testing Checklist for New Tools
-
-When testing a new tool, verify the following:
-
-1. **Authentication** - Tool correctly uses user tokens
-2. **Parameters** - All parameters work as expected
-3. **Response Format** - Returns data in expected format
-4. **Error Handling** - Gracefully handles invalid inputs
-5. **Permissions** - Respects user's access rights
-6. **Documentation** - Docstrings match actual behavior
-
-### New Tools to Test (Priority Order)
-
-#### High Priority
-- [ ] `confluence_get_page` - Core functionality for accessing page content
-- [ ] `outlook_search_emails` - Enhanced search with KQL
-- [ ] `jira_get_issue_comments` - Important for issue context
-
-#### Medium Priority
-- [ ] `confluence_get_space` - Space information access
-- [ ] `confluence_get_space_pages` - Browse space content
-- [ ] `teams_list_my_chats` - Access to chat conversations
-- [ ] `teams_list_chat_messages` - Read chat messages
-
-#### Lower Priority
-- [ ] `confluence_get_page_children` - Hierarchical navigation
-- [ ] `jira_get_issue_worklogs` - Time tracking information
-
----
-
-## Test Results Template
-
-When testing a tool, record results here:
-
-```markdown
-### [Tool Name] - Tested on [Date]
-- **Tester**: [Your Name]
-- **Test Case**: [Description of what you tested]
-- **Result**: ✅ Pass / ❌ Fail
-- **Issues Found**: [Any issues or bugs]
-- **Notes**: [Additional observations]
-```
-
----
-
-*Last Updated: November 3, 2025*

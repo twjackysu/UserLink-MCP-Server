@@ -18,9 +18,9 @@ Modern knowledge workers have their data scattered across multiple platforms. Us
 
 ## ✨ Features
 
-### 21 Built-in Tools
+### 20 Built-in Tools
 
-UserLink provides 21 read-only tools across 4 services:
+UserLink provides 20 read-only tools across 4 services:
 
 #### Microsoft Teams (6 tools)
 - `teams_get_joined_teams` - Get user's teams
@@ -53,12 +53,8 @@ UserLink provides 21 read-only tools across 4 services:
 
 **Example:** "What are the high-priority blockers preventing this sprint from completing?"
 
-#### Atlassian Confluence (5 tools)
+#### Atlassian Confluence (1 tool)
 - `confluence_search_content` - Search using CQL
-- `confluence_get_space` - Get space information by space key
-- `confluence_get_page` - Get page content with full details
-- `confluence_get_space_pages` - List all pages in a space
-- `confluence_get_page_children` - Get child pages of a page
 
 **Example:** "Find the latest architecture decision records for the payment service"
 
